@@ -9,6 +9,8 @@
 - Nunca expor um proxy HTTP genérico, seguir redirecionamentos externos ou registrar corpos de requisição/resposta.
 - Preservar a trilha de auditoria do Pattern Guard e a redação de campos sensíveis.
 - Não representar uma simulação de software como prova de operação de hardware físico.
+- O Pulse Lab deve permanecer estritamente em memória: sem áudio, rádio, GPIO, USB, sockets ou emissão física.
+- Não afirmar que frequências limpam redes, alinham sistemas ou impedem clonagem sem ensaio independente reproduzível.
 - Não alterar ou mesclar diretamente em `main`; usar branch e revisão.
 
 ## Validação

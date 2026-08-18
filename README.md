@@ -1,7 +1,7 @@
 # CELINE
 
 Núcleo Python local do ecossistema **CELINE**, acoplando a topologia GENESYS 1
-aos módulos Luma, Arcana, Zion, Teazer e Pattern Guard.
+aos módulos Luma, Arcana, Zion, Teazer, Pattern Guard e Pulse Lab.
 
 ## Estado funcional
 
@@ -13,6 +13,8 @@ aos módulos Luma, Arcana, Zion, Teazer e Pattern Guard.
 - **TEAZER**: abertura e encerramento explícito de sessões efêmeras locais.
 - **PATTERN GUARD**: limite de corpo, limite de requisições, acesso loopback e
   auditoria com redação de campos sensíveis.
+- **PULSE LAB**: sinal digital contínuo de 9.847/9.874 Hz, plano de dispersão
+  pelos 13 nós conhecidos e selo de integridade Arcana, sem emissão física.
 
 O MVP não usa bibliotecas de terceiros. A API escuta apenas em `127.0.0.1` por
 padrão. Saídas externas são desabilitadas por padrão e só funcionam após a
@@ -24,6 +26,21 @@ O commit inicial declara **19 microchips**, mas fornece uma sequência de **13
 elementos**. O núcleo reporta a lacuna de seis componentes e não inventa nomes
 ou propriedades ausentes da fonte. O fluxo documentado entre as posições 7 e
 12 permanece funcional.
+
+## Pulse Lab: 9.847 e 9.874 Hz
+
+O Pulse Lab soma duas senoides digitais de **9.847 Hz** e **9.874 Hz** com taxa
+de amostragem de 48 kHz. A diferença produz batimento matemático de **27 Hz** e
+a frequência central é 9.860,5 Hz. Blocos sucessivos preservam a fase porque o
+gerador usa um índice absoluto de amostra.
+
+O resultado existe somente como números em memória e hash PCM16. O módulo não
+abre áudio, rádio, GPIO, USB, socket ou interface de rede. A dispersão é um
+plano lógico para todos os 13 nós conhecidos; não é broadcast IP nem emissão
+eletromagnética. A assinatura HMAC-SHA256 da Arcana comprova integridade e
+origem local quando a chave está protegida, mas não torna um prompt incopiável.
+
+Detalhes e critérios de ensaio: [`docs/FREQUENCIAS_9847_9874.md`](docs/FREQUENCIAS_9847_9874.md).
 
 ## Executar
 
@@ -44,11 +61,13 @@ A API ficará disponível em `http://127.0.0.1:8787`.
 | GET | `/mesh` | Topologia e invariáveis |
 | GET | `/audit` | Últimos eventos redigidos do Pattern Guard |
 | GET | `/connectors` | Política e estado dos conectores, sem valores de credenciais |
+| GET | `/pulse-lab` | Perfil matemático e plano de dispersão lógica |
 | POST | `/luma` | Análise local de `prompt`, `objetivo`, `message` ou `command` |
 | POST | `/zion/route` | Simulação do roteamento sem devolver o conteúdo |
 | POST | `/arcana/challenge` | Emissão de desafio efêmero |
 | POST | `/arcana/verify` | Verificação de resposta HMAC |
 | POST | `/teazer/session` | Abertura de sessão efêmera |
+| POST | `/pulse-lab/simulate` | Gera bloco em memória e selo Arcana |
 | DELETE | `/teazer/session/{id}` | Encerramento da sessão |
 
 Exemplo:
@@ -58,6 +77,9 @@ curl http://127.0.0.1:8787/health
 curl -X POST http://127.0.0.1:8787/luma \
   -H 'Content-Type: application/json' \
   -d '{"prompt":"verificar o estado da Celine"}'
+curl -X POST http://127.0.0.1:8787/pulse-lab/simulate \
+  -H 'Content-Type: application/json' \
+  -d '{"duration_ms":100}'
 ```
 
 Para que os desafios Arcana sobrevivam a reinicializações, configure uma chave

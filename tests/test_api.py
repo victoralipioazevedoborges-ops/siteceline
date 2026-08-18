@@ -57,6 +57,21 @@ class APITests(unittest.TestCase):
         self.assertEqual(route["module"], "ZION")
         self.assertNotIn("conteúdo", json.dumps(route))
 
+    def test_pulse_lab_profile_and_simulation_are_software_only(self) -> None:
+        status, profile = self.request("/pulse-lab")
+        self.assertEqual(status, 200)
+        self.assertEqual(profile["profile"]["frequencies_hz"], [9_847.0, 9_874.0])
+        self.assertFalse(profile["profile"]["physical_emission"])
+
+        status, result = self.request(
+            "/pulse-lab/simulate", {"duration_ms": 5.0}
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(result["chunk"]["sample_count"], 240)
+        self.assertFalse(result["physical_emission"])
+        self.assertFalse(result["network_transmission"])
+        self.assertIn("arcana_integrity_seal", result)
+
 
 if __name__ == "__main__":
     unittest.main()

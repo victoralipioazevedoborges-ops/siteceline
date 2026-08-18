@@ -16,7 +16,7 @@ from .ecosystem import CelineEcosystem
 
 
 class CelineRequestHandler(BaseHTTPRequestHandler):
-    server_version = "CELINE/0.2"
+    server_version = "CELINE/0.3"
     protocol_version = "HTTP/1.1"
 
     def __init__(self, *args: Any, ecosystem: CelineEcosystem, **kwargs: Any) -> None:
@@ -100,6 +100,8 @@ class CelineRequestHandler(BaseHTTPRequestHandler):
                     "connectors": self.ecosystem.connector_status(),
                 },
             )
+        elif path == "/pulse-lab":
+            self._send(HTTPStatus.OK, self.ecosystem.pulse_status())
         else:
             self._send(HTTPStatus.NOT_FOUND, {"error": "Rota não encontrada."})
 
@@ -143,6 +145,12 @@ class CelineRequestHandler(BaseHTTPRequestHandler):
                 self._send(
                     HTTPStatus.CREATED,
                     self.ecosystem.open_teazer_session(),
+                )
+            elif path == "/pulse-lab/simulate":
+                duration_ms = body.get("duration_ms", 100.0)
+                self._send(
+                    HTTPStatus.OK,
+                    self.ecosystem.simulate_pulses(duration_ms),
                 )
             else:
                 self._send(HTTPStatus.NOT_FOUND, {"error": "Rota não encontrada."})

@@ -117,3 +117,32 @@ class ArcanaModule:
             return False
         expected = self.sign(session_id, nonce)
         return hmac.compare_digest(expected, response)
+
+    def seal(self, namespace: str, payload: str | bytes) -> dict[str, str]:
+        """Sela integridade e origem local; não torna o conteúdo incopiável."""
+
+        raw = payload.encode("utf-8") if isinstance(payload, str) else payload
+        digest = sha256(raw).hexdigest()
+        message = f"{namespace}:{digest}".encode("utf-8")
+        signature = hmac.new(self._secret, message, sha256).hexdigest()
+        return {
+            "namespace": namespace,
+            "digest_algorithm": "SHA-256",
+            "payload_sha256": digest,
+            "signature_algorithm": "HMAC-SHA256",
+            "signature": signature,
+            "scope": "integrity_and_origin_authentication",
+            "clone_prevention": "not_claimed",
+        }
+
+    def verify_seal(
+        self,
+        namespace: str,
+        payload: str | bytes,
+        signature: str,
+    ) -> bool:
+        raw = payload.encode("utf-8") if isinstance(payload, str) else payload
+        digest = sha256(raw).hexdigest()
+        message = f"{namespace}:{digest}".encode("utf-8")
+        expected = hmac.new(self._secret, message, sha256).hexdigest()
+        return hmac.compare_digest(expected, signature)

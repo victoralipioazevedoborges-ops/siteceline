@@ -11,7 +11,7 @@ class EcosystemTests(unittest.TestCase):
         ecosystem = CelineEcosystem(arcana_secret="segredo-de-teste")
         health = ecosystem.health()
         self.assertEqual(health["name"], "CELINE")
-        self.assertEqual(len(health["modules"]), 6)
+        self.assertEqual(len(health["modules"]), 7)
         self.assertFalse(health["external_network"])
         self.assertEqual(health["gemini_policy"], "blocked")
 
@@ -21,6 +21,20 @@ class EcosystemTests(unittest.TestCase):
         route = ecosystem.route("mensagem")
         self.assertEqual(route["module"], "ZION")
         self.assertNotIn("mensagem", json.dumps(route))
+
+    def test_pulse_simulation_is_sealed_and_has_no_physical_output(self) -> None:
+        ecosystem = CelineEcosystem(arcana_secret="segredo-de-teste")
+        result = ecosystem.simulate_pulses(10.0)
+        self.assertEqual(result["profile"]["frequencies_hz"], [9_847.0, 9_874.0])
+        self.assertEqual(result["profile"]["beat_frequency_hz"], 27.0)
+        self.assertEqual(result["chunk"]["sample_count"], 480)
+        self.assertFalse(result["physical_emission"])
+        self.assertFalse(result["network_transmission"])
+        self.assertTrue(ecosystem.verify_pulse_simulation(result))
+
+        tampered = json.loads(json.dumps(result))
+        tampered["profile"]["frequencies_hz"][0] = 1.0
+        self.assertFalse(ecosystem.verify_pulse_simulation(tampered))
 
     def test_arcana_challenge_is_single_use(self) -> None:
         ecosystem = CelineEcosystem(arcana_secret="segredo-de-teste")

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
@@ -10,6 +11,7 @@ from core_neural_mesh import Genesys1NeuralMesh
 from .connectors import ConnectorRegistry, Transport
 from .modules import ArcanaModule, LumaModule, TeazerModule, ZionModule
 from .pattern_guard import PatternGuard
+from .pulse_lab import CelinePulseLab
 
 
 class CelineEcosystem:
@@ -20,6 +22,7 @@ class CelineEcosystem:
         "ZION": "Roteamento auditável sobre a malha GENESYS 1",
         "TEAZER": "Isolamento e encerramento de sessões locais",
         "PATTERN_GUARD": "Política, limites e auditoria redigida",
+        "PULSE_LAB": "Sinal digital 9.847/9.874 Hz e dispersão lógica segura",
     }
 
     def __init__(
@@ -36,6 +39,7 @@ class CelineEcosystem:
         self.arcana = ArcanaModule(secret=arcana_secret)
         self.zion = ZionModule(self.mesh)
         self.teazer = TeazerModule()
+        self.pulse_lab = CelinePulseLab(self.mesh)
         self.connectors = ConnectorRegistry.defaults(
             environment=connector_environment,
             transport=connector_transport,
@@ -53,7 +57,7 @@ class CelineEcosystem:
         connectors = self.connectors.status()
         return {
             "name": "CELINE",
-            "version": "0.2.0",
+            "version": "0.3.0",
             "status": (
                 "operational_with_spec_gap"
                 if validation["issues"]
@@ -70,7 +74,54 @@ class CelineEcosystem:
             "modules": self.modules(),
             "teazer_active_sessions": self.teazer.active_count(),
             "arcana_persistent_secret": self.arcana.uses_persistent_secret,
+            "pulse_lab": {
+                "frequencies_hz": [9_847.0, 9_874.0],
+                "beat_frequency_hz": 27.0,
+                "mode": "digital_simulation_only",
+                "physical_emission": False,
+            },
         }
+
+    def pulse_status(self) -> dict[str, Any]:
+        return self.pulse_lab.status()
+
+    def simulate_pulses(self, duration_ms: float = 100.0) -> dict[str, Any]:
+        result = self.pulse_lab.simulate(duration_ms)
+        canonical = json.dumps(
+            result,
+            ensure_ascii=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+        result["arcana_integrity_seal"] = self.arcana.seal(
+            "celine-pulse-lab-v1", canonical
+        )
+        self.pattern_guard.record(
+            "pulse_lab_simulation",
+            "ok",
+            {
+                "duration_ms": result["chunk"]["duration_ms"],
+                "sample_count": result["chunk"]["sample_count"],
+                "pcm16_sha256": result["chunk"]["pcm16_sha256"],
+                "physical_emission": False,
+            },
+        )
+        return result
+
+    def verify_pulse_simulation(self, result: dict[str, Any]) -> bool:
+        unsigned = dict(result)
+        seal = unsigned.pop("arcana_integrity_seal", None)
+        if not isinstance(seal, dict) or not isinstance(seal.get("signature"), str):
+            return False
+        canonical = json.dumps(
+            unsigned,
+            ensure_ascii=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+        return self.arcana.verify_seal(
+            "celine-pulse-lab-v1", canonical, seal["signature"]
+        )
 
     def connector_status(self) -> list[dict[str, Any]]:
         return self.connectors.status()

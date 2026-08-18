@@ -80,9 +80,16 @@ inventar os seis nós ausentes:
 - TEAZER: sessões efêmeras com encerramento explícito.
 - PATTERN GUARD: loopback por padrão, limites de corpo e frequência, auditoria
   e redação de metadados sensíveis.
+- PULSE LAB: geração contínua em memória de 9.847/9.874 Hz, batimento de 27 Hz,
+  dispersão lógica pelos nós conhecidos e selo HMAC-SHA256 da Arcana.
 - API HTTP local com rotas de saúde, módulos, malha, auditoria e operações dos
   módulos.
 - Suite automatizada de testes e documentação operacional.
+
+O Pulse Lab não emite por áudio, rádio ou rede. Sua finalidade é preservar e
+testar a especificação matemática sem converter uma hipótese em alegação de
+eficácia física. A frequência não substitui autenticação, segmentação, análise
+de malware ou outros controles de segurança.
 
 ## Saída externa governada
 
