@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
+from .documents import DocumentInspector
 from .ecosystem import CelineEcosystem
 
 
@@ -75,6 +76,15 @@ class CelineRequestHandler(BaseHTTPRequestHandler):
             raise ValueError("O corpo JSON deve ser um objeto.")
         return data
 
+    def _read_document(self) -> tuple[str, bytes]:
+        filename = self.headers.get("X-CELINE-Filename", "")
+        if not filename:
+            raise ValueError("Cabeçalho X-CELINE-Filename é obrigatório.")
+        length = int(self.headers.get("Content-Length", "0"))
+        if length == 0:
+            raise ValueError("O documento está vazio.")
+        return filename, self.rfile.read(length)
+
     def do_GET(self) -> None:  # noqa: N802
         if not self._authorize():
             return
@@ -110,6 +120,13 @@ class CelineRequestHandler(BaseHTTPRequestHandler):
             return
         path = urlparse(self.path).path
         try:
+            if path == "/documents/inspect":
+                filename, raw = self._read_document()
+                self._send(
+                    HTTPStatus.OK,
+                    self.ecosystem.inspect_document(filename, raw),
+                )
+                return
             body = self._read_json()
             if path == "/luma":
                 text = next(
@@ -197,7 +214,19 @@ def main() -> None:
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", default=8787, type=int)
     parser.add_argument("--allow-remote", action="store_true")
+    parser.add_argument(
+        "--inspect-document",
+        metavar="ARQUIVO",
+        help="inspeciona localmente qualquer arquivo e encerra",
+    )
     args = parser.parse_args()
+    if args.inspect_document:
+        try:
+            result = DocumentInspector().inspect_path(args.inspect_document)
+        except (OSError, ValueError) as exc:
+            parser.error(str(exc))
+        print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
+        return
     server = build_server(args.host, args.port, allow_remote=args.allow_remote)
     print(f"CELINE disponível em http://{args.host}:{args.port}")
     try:

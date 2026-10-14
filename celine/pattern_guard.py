@@ -22,11 +22,13 @@ class PatternGuard:
         *,
         audit_path: str | Path | None = None,
         max_body_bytes: int = 65_536,
+        max_document_body_bytes: int = 32 * 1024 * 1024,
         max_requests_per_minute: int = 120,
         max_events: int = 1_000,
     ) -> None:
         self.audit_path = Path(audit_path) if audit_path else None
         self.max_body_bytes = max_body_bytes
+        self.max_document_body_bytes = max_document_body_bytes
         self.max_requests_per_minute = max_requests_per_minute
         self._events: deque[dict[str, Any]] = deque(maxlen=max_events)
         self._requests: dict[str, deque[float]] = defaultdict(deque)
@@ -83,7 +85,12 @@ class PatternGuard:
         if not self.is_loopback(client_ip):
             self.record("request", "denied", {"reason": "non_loopback", "path": path})
             return False, "Somente conexões locais são permitidas."
-        if content_length < 0 or content_length > self.max_body_bytes:
+        body_limit = (
+            self.max_document_body_bytes
+            if path == "/documents/inspect"
+            else self.max_body_bytes
+        )
+        if content_length < 0 or content_length > body_limit:
             self.record("request", "denied", {"reason": "body_limit", "path": path})
             return False, "Corpo da requisição acima do limite."
 

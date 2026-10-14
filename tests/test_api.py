@@ -1,6 +1,8 @@
 import json
+from io import BytesIO
 from threading import Thread
 import unittest
+import zipfile
 from urllib.request import Request, urlopen
 
 from celine.api import build_server
@@ -28,6 +30,18 @@ class APITests(unittest.TestCase):
             self.base_url + path,
             data=data,
             headers={"Content-Type": "application/json"},
+        )
+        with urlopen(request, timeout=2) as response:
+            return response.status, json.loads(response.read())
+
+    def upload(self, filename: str, data: bytes) -> tuple[int, dict]:
+        request = Request(
+            self.base_url + "/documents/inspect",
+            data=data,
+            headers={
+                "Content-Type": "application/octet-stream",
+                "X-CELINE-Filename": filename,
+            },
         )
         with urlopen(request, timeout=2) as response:
             return response.status, json.loads(response.read())
@@ -71,6 +85,26 @@ class APITests(unittest.TestCase):
         self.assertFalse(result["physical_emission"])
         self.assertFalse(result["network_transmission"])
         self.assertIn("arcana_integrity_seal", result)
+
+    def test_document_endpoint_reads_json_without_auditing_content(self) -> None:
+        status, payload = self.upload("exemplo.json", b'{"idioma":"pt-BR"}')
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["documents"][0]["content"]["idioma"], "pt-BR")
+        self.assertEqual(payload["storage"], "memory_only")
+        self.assertNotIn("pt-BR", json.dumps(self.ecosystem.pattern_guard.recent()))
+
+    def test_document_endpoint_reads_json_inside_zip(self) -> None:
+        stream = BytesIO()
+        with zipfile.ZipFile(stream, "w") as archive:
+            archive.writestr("dados/config.json", '{"ativo":true}')
+            archive.writestr("notas.txt", "ignorar")
+        status, payload = self.upload("pacote.zip", stream.getvalue())
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["document_count"], 2)
+        self.assertEqual(payload["documents"][0]["name"], "dados/config.json")
+        self.assertEqual(payload["artifact_count"], 2)
+        self.assertEqual(payload["artifacts"][1]["text"], "ignorar")
+        self.assertEqual(payload["skipped"], [])
 
 
 if __name__ == "__main__":
