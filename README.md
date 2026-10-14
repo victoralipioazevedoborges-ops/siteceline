@@ -63,6 +63,7 @@ A API ficará disponível em `http://127.0.0.1:8787`.
 | GET | `/connectors` | Política e estado dos conectores, sem valores de credenciais |
 | GET | `/pulse-lab` | Perfil matemático e plano de dispersão lógica |
 | POST | `/luma` | Análise local de `prompt`, `objetivo`, `message` ou `command` |
+| POST | `/documents/inspect` | Inspeciona qualquer arquivo localmente e somente em memória |
 | POST | `/zion/route` | Simulação do roteamento sem devolver o conteúdo |
 | POST | `/arcana/challenge` | Emissão de desafio efêmero |
 | POST | `/arcana/verify` | Verificação de resposta HMAC |
@@ -81,6 +82,60 @@ curl -X POST http://127.0.0.1:8787/pulse-lab/simulate \
   -H 'Content-Type: application/json' \
   -d '{"duration_ms":100}'
 ```
+
+### Arquivos de qualquer extensão
+
+O texto `documentos.tgz` dos exemplos é apenas ilustrativo: o arquivo precisa
+existir no computador e o comando deve apontar para seu caminho real. Confira
+primeiro onde ele está:
+
+```bash
+find "$HOME" -maxdepth 4 -type f -print
+```
+
+O modo mais simples não exige iniciar o servidor nem usar `curl`:
+
+```bash
+python -m celine --inspect-document "$HOME/Downloads/arquivo.dll"
+```
+
+Substitua o caminho acima por um dos caminhos devolvidos pelo `find`. Se o
+arquivo estiver no diretório atual, use `./nome-real-do-arquivo.extensao`.
+
+Envie o arquivo como corpo binário e informe apenas o nome no cabeçalho. A rota
+aceita qualquer extensão, inclusive `.py`, `.dll`, imagens, PDFs e formatos
+desconhecidos. Textos UTF-8 são devolvidos para análise; JSON é estruturado;
+binários retornam tamanho, SHA-256, tipo sugerido, assinatura inicial e indicação
+de Portable Executable. Nenhum arquivo é executado, carregado como biblioteca,
+gravado, encaminhado a conectores ou incluído integralmente na auditoria.
+
+ZIP, TGZ e `tar.gz` são abertos somente em memória e cada item recebe a mesma
+análise. Pacotes não podem conter caminhos ascendentes, links, itens especiais
+ou ZIP criptografado.
+
+```bash
+ARQUIVO="$HOME/Downloads/nome-real-do-arquivo.dll"
+test -f "$ARQUIVO" || { echo "Arquivo não encontrado: $ARQUIVO"; exit 1; }
+curl -X POST http://127.0.0.1:8787/documents/inspect \
+  -H 'Content-Type: application/octet-stream' \
+  -H "X-CELINE-Filename: $(basename "$ARQUIVO")" \
+  --data-binary "@$ARQUIVO"
+```
+
+O erro `curl: Failed to open` acontece no próprio terminal, antes de qualquer
+contato com a CELINE: ele significa que o caminho depois de `@` não existe ou
+não pode ser lido pelo usuário atual.
+
+O upload pode ter até 32 MiB; são aceitos até 200 itens em pacotes, com no máximo
+8 MiB por item e 32 MiB descompactados no total. Para materiais sensíveis, remova
+credenciais e dados pessoais antes do envio, mesmo sendo uma interface restrita
+ao computador local.
+
+> **Importante:** executar essa API no seu computador não transfere o arquivo
+> para esta conversa nem para o ambiente de desenvolvimento do Codex. Para que
+> eu analise o arquivo em uma interação, anexe-o diretamente à conversa ou
+> coloque uma cópia dentro do repositório `/workspace/siteceline` e informe o
+> caminho relativo. Não cole senhas, tokens, documentos pessoais ou segredos.
 
 Para que os desafios Arcana sobrevivam a reinicializações, configure uma chave
 local sem registrá-la no Git:

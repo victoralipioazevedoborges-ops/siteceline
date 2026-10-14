@@ -9,6 +9,7 @@ from typing import Any
 from core_neural_mesh import Genesys1NeuralMesh
 
 from .connectors import ConnectorRegistry, Transport
+from .documents import DocumentInspector
 from .modules import ArcanaModule, LumaModule, TeazerModule, ZionModule
 from .pattern_guard import PatternGuard
 from .pulse_lab import CelinePulseLab
@@ -22,6 +23,7 @@ class CelineEcosystem:
         "ZION": "Roteamento auditável sobre a malha GENESYS 1",
         "TEAZER": "Isolamento e encerramento de sessões locais",
         "PATTERN_GUARD": "Política, limites e auditoria redigida",
+        "ARQUIVOS": "Inspeção passiva local de textos, binários, ZIP e TGZ",
         "PULSE_LAB": "Sinal digital 9.847/9.874 Hz e dispersão lógica segura",
     }
 
@@ -44,6 +46,7 @@ class CelineEcosystem:
             environment=connector_environment,
             transport=connector_transport,
         )
+        self.documents = DocumentInspector()
         self.pattern_guard.record("ecosystem_start", "ok", {"name": "CELINE"})
 
     def modules(self) -> list[dict[str, str]]:
@@ -125,6 +128,19 @@ class CelineEcosystem:
 
     def connector_status(self) -> list[dict[str, Any]]:
         return self.connectors.status()
+
+    def inspect_document(self, filename: str, raw: bytes) -> dict[str, Any]:
+        result = self.documents.inspect(filename, raw)
+        self.pattern_guard.record(
+            "document_inspect",
+            "ok",
+            {
+                "format": result["format"],
+                "document_count": result["document_count"],
+                "upload_size_bytes": len(raw),
+            },
+        )
+        return result
 
     def connector_request(
         self,

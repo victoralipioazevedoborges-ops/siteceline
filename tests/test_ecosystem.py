@@ -11,7 +11,8 @@ class EcosystemTests(unittest.TestCase):
         ecosystem = CelineEcosystem(arcana_secret="segredo-de-teste")
         health = ecosystem.health()
         self.assertEqual(health["name"], "CELINE")
-        self.assertEqual(len(health["modules"]), 7)
+        self.assertEqual(len(health["modules"]), 8)
+        self.assertIn("ARQUIVOS", {item["name"] for item in health["modules"]})
         self.assertFalse(health["external_network"])
         self.assertEqual(health["gemini_policy"], "blocked")
 
