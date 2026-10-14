@@ -47,10 +47,108 @@ Detalhes e critérios de ensaio: [`docs/FREQUENCIAS_9847_9874.md`](docs/FREQUENC
 Requer Python 3.11 ou superior.
 
 ```bash
-python -m celine
+python3 -m celine
 ```
 
 A API ficará disponível em `http://127.0.0.1:8787`.
+
+Execute os comandos a partir do clone deste repositório na própria máquina. O
+caminho `/workspace/siteceline` pertence somente a ambientes de automação e não
+deve ser copiado literalmente para um terminal pessoal.
+
+### Entregar outro workspace para análise
+
+Este ambiente não enxerga diretórios criados no computador do operador. Quando
+a interface não aceitar anexos, use um repositório Git **separado** como meio de
+transferência. Não copie o App Builder para este repositório da CELINE.
+
+No Linux, crie o workspace e registre os arquivos existentes assim:
+
+```bash
+mkdir -p "$HOME/celine-app-builder"
+cd "$HOME/celine-app-builder"
+git init -b importacao
+printf '.env\n.env.*\nnode_modules/\n*.pem\n*.key\n*.p12\n*.pfx\n' > .gitignore
+# Copie ou recupere os arquivos do App Builder para esta pasta.
+git add .
+git status --short
+git commit -m 'chore: importar workspace para análise'
+```
+
+Antes de publicar, examine `git status --short` e remova credenciais, cookies,
+sessões, bancos com dados pessoais e exportações de mensagens. Depois crie um
+repositório remoto vazio no provedor Git escolhido e execute, substituindo a
+URL pelo endereço real fornecido pelo provedor:
+
+```bash
+git remote add origin https://github.com/USUARIO/REPOSITORIO.git
+git push -u origin importacao
+```
+
+Por fim, envie nesta conversa somente a URL do repositório e o nome da branch
+(`importacao`). O repositório precisa estar acessível para leitura; não envie
+token ou senha no chat. Se o material não puder ser tornado acessível com
+segurança, envie primeiro apenas a listagem sanitizada produzida por
+`git status --short` e os arquivos de configuração não secretos em blocos de
+texto identificados pelo caminho relativo.
+
+#### Criar uma cópia comprimida no Ubuntu
+
+Para código-fonte, `tar.xz` costuma ocupar menos espaço que ZIP, embora leve
+mais tempo para comprimir. Execute o comando a partir da pasta que contém o
+workspace; assim, o arquivo gerado não é incluído dentro dele:
+
+```bash
+cd "$HOME"
+tar \
+  --exclude='celine-app-builder/.git' \
+  --exclude='celine-app-builder/node_modules' \
+  --exclude='celine-app-builder/.env' \
+  --exclude='celine-app-builder/.env.*' \
+  --exclude='celine-app-builder/dist' \
+  --exclude='celine-app-builder/build' \
+  --exclude='celine-app-builder/.cache' \
+  -I 'xz -9e -T0' \
+  -cf celine-app-builder.tar.xz celine-app-builder/
+```
+
+Confira tamanho, conteúdo e integridade antes de copiar ou publicar:
+
+```bash
+du -h "$HOME/celine-app-builder.tar.xz"
+tar -tJf "$HOME/celine-app-builder.tar.xz" | less
+xz --test "$HOME/celine-app-builder.tar.xz"
+sha256sum "$HOME/celine-app-builder.tar.xz" \
+  > "$HOME/celine-app-builder.tar.xz.sha256"
+```
+
+Para descomprimir em outra pasta:
+
+```bash
+mkdir -p "$HOME/celine-restaurada"
+tar -xJf "$HOME/celine-app-builder.tar.xz" \
+  -C "$HOME/celine-restaurada" --strip-components=1
+```
+
+O arquivo comprimido é apenas uma cópia local; ele não se torna acessível a
+este ambiente automaticamente. Para análise remota, publique os fontes
+sanitizados pelo fluxo Git acima. Não use Base64 para economizar espaço: a
+codificação aumenta o volume e não substitui criptografia.
+
+### Diagnóstico de comunicação local
+
+Em outra aba do terminal, verifique a comunicação com a API sem consultar
+serviços externos:
+
+```bash
+python3 -m celine.diagnostics
+```
+
+O comando acessa exclusivamente `/health` em um endereço de loopback, limita a
+resposta a 64 KiB e informa apenas disponibilidade, status HTTP, estado da
+CELINE e se algum conector externo foi habilitado. Ele recusa destinos remotos,
+credenciais na URL e outras rotas. Esse diagnóstico cobre a API local; ele não
+testa nem controla a conexão do navegador com um serviço de bate-papo.
 
 ## Rotas
 
@@ -136,7 +234,7 @@ Variáveis de habilitação e credencial:
 ## Testes
 
 ```bash
-python -m unittest discover -s tests -v
+python3 -m unittest discover -s tests -v
 ```
 
 ## Limite técnico honesto
